@@ -1,0 +1,34 @@
+# Schedule data — NEVER commit
+*.mpp
+*.mpp.bak
+exports/
+uploads/
+session_data/
+*.xml
+*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+.eslintcache
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
