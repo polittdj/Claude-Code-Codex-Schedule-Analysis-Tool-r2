@@ -13,6 +13,8 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from backend.session import session_manager
@@ -387,3 +389,17 @@ async def health() -> dict[str, str]:
         "status": "ok",
         "jvm_available": str(mpp_parser.JVM_AVAILABLE),
     }
+
+
+# ── Serve pre-built React frontend ────────────────────────────────────────────
+# Must come LAST — catches all non-API routes and serves index.html
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_DIST = os.path.join(_HERE, "..", "frontend", "dist")
+
+if os.path.isdir(_DIST):
+    app.mount("/assets", StaticFiles(directory=os.path.join(_DIST, "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        return FileResponse(os.path.join(_DIST, "index.html"))
