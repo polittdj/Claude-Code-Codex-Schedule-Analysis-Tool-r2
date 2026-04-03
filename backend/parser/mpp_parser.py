@@ -322,7 +322,7 @@ def _extract_links(project) -> list[dict[str, Any]]:
         for pred_rel in jtask.getPredecessors():
             if pred_rel is None:
                 continue
-            pred_task = pred_rel.getTargetTask()
+            pred_task = pred_rel.getPredecessorTask()
             if pred_task is None:
                 continue
             pred_id = str(pred_task.getUniqueID())
