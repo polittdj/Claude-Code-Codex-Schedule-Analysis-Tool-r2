@@ -22,7 +22,7 @@ build/
 
 # Node / Frontend
 node_modules/
-frontend/dist/
+# frontend/dist/ — intentionally committed so users don't need Node.js
 frontend/.vite/
 .eslintcache
 
