@@ -38,7 +38,26 @@ def start_jvm() -> bool:
         import jpype.imports
 
         if not jpype.isJVMStarted():
-            jpype.startJVM(convertStrings=False)
+            # Locate JVM — prefer explicit JAVA_HOME so portable JDK works
+            jvm_path = None
+            java_home = os.environ.get("JAVA_HOME", "")
+            if java_home:
+                # Windows: jvm.dll lives at <JAVA_HOME>\bin\server\jvm.dll
+                # Linux/Mac: <JAVA_HOME>/lib/server/libjvm.so
+                for candidate in [
+                    os.path.join(java_home, "bin", "server", "jvm.dll"),
+                    os.path.join(java_home, "lib", "server", "libjvm.so"),
+                    os.path.join(java_home, "lib", "server", "libjvm.dylib"),
+                ]:
+                    if os.path.isfile(candidate):
+                        jvm_path = candidate
+                        break
+
+            if jvm_path:
+                jpype.startJVM(jvm_path, convertStrings=False)
+            else:
+                # Fall back to JPype's auto-detection
+                jpype.startJVM(convertStrings=False)
 
         _load_mpxj_classes()
         JVM_AVAILABLE = True

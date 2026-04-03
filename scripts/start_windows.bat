@@ -43,6 +43,8 @@ exit /b 1
 :java_found
 echo Found portable Java at: %JAVA_HOME%
 set "PATH=%JAVA_HOME%\bin;%PATH%"
+REM Make JAVA_HOME visible to child processes (Python/JPype)
+setx JAVA_HOME "%JAVA_HOME%" >nul 2>&1
 
 :java_ok
 
