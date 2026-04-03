@@ -27,6 +27,21 @@ def start_jvm() -> bool:
 
     Returns True if JVM started successfully, False if Java is unavailable.
     Must be called before any parse_mpp() calls.
+
+    IMPORTANT — classpath handling:
+    The Python ``mpxj`` package registers all its JARs via
+    ``jpype.addClassPath()`` at *import* time (inside mpxj/__init__.py).
+    Those pre-registered paths are picked up automatically when
+    ``jpype.startJVM()`` is called **without** an explicit ``classpath=``
+    argument.  Passing ``classpath=jar_files`` to startJVM would *replace*
+    (not extend) the accumulated classpath, which is why the JARs still
+    appeared in ``jpype.getClassPath()`` but the ``net.sf.mpxj`` (now
+    ``org.mpxj``) packages were not visible — the replacement classpath was
+    processed differently by the JVM's class-path scanner.
+
+    Also note: as of mpxj 13.x the Java package was renamed from
+    ``net.sf.mpxj`` to ``org.mpxj``.  The bundled JAR must be inspected to
+    confirm the correct namespace; do **not** hard-code ``net.sf.mpxj``.
     """
     global JVM_AVAILABLE, _jvm_started
 
@@ -34,20 +49,14 @@ def start_jvm() -> bool:
         return JVM_AVAILABLE
 
     try:
-        import glob
         import jpype
-        import jpype.imports
-        import mpxj as _mpxj_pkg
+        # Import mpxj BEFORE startJVM — its __init__.py calls
+        # jpype.addClassPath() for every JAR in mpxj/lib/.  Those paths are
+        # consumed by startJVM() when no explicit classpath= is passed.
+        import mpxj as _mpxj_pkg  # noqa: F401 (side-effect: addClassPath)
+        import jpype.imports  # registers Java TLD finders in sys.meta_path
 
         if not jpype.isJVMStarted():
-            # Collect all MPXJ JARs — they live in mpxj.mpxj_dir
-            jar_files = glob.glob(os.path.join(_mpxj_pkg.mpxj_dir, "*.jar"))
-            if not jar_files:
-                raise RuntimeError(
-                    f"No MPXJ JARs found in {_mpxj_pkg.mpxj_dir}. "
-                    "Re-run: pip install mpxj"
-                )
-
             # Locate JVM — prefer explicit JAVA_HOME so portable JDK works
             jvm_path = None
             java_home = os.environ.get("JAVA_HOME", "")
@@ -62,16 +71,18 @@ def start_jvm() -> bool:
                         break
 
             logger.info(
-                "Starting JVM: path=%s, jars=%d, JAVA_HOME=%s",
+                "Starting JVM: path=%s, classpath_entries=%d, JAVA_HOME=%s",
                 jvm_path or "auto",
-                len(jar_files),
+                len(jpype.getClassPath().split(os.pathsep)) if jpype.getClassPath() else 0,
                 java_home or "not set",
             )
 
+            # Do NOT pass classpath= here — let startJVM use the paths that
+            # mpxj's __init__.py registered via addClassPath().
             if jvm_path:
-                jpype.startJVM(jvm_path, classpath=jar_files, convertStrings=False)
+                jpype.startJVM(jvm_path, convertStrings=False)
             else:
-                jpype.startJVM(classpath=jar_files, convertStrings=False)
+                jpype.startJVM(convertStrings=False)
 
         _load_mpxj_classes()
         JVM_AVAILABLE = True
@@ -92,11 +103,16 @@ def start_jvm() -> bool:
 
 
 def _load_mpxj_classes() -> None:
-    """Import MPXJ Java classes after JVM is running."""
+    """Import MPXJ Java classes after JVM is running.
+
+    As of mpxj 13.x the Java package was renamed from ``net.sf.mpxj`` to
+    ``org.mpxj``.  The Python ``mpxj`` wheel ships the new JAR, so we must
+    use the ``org.mpxj`` namespace here.
+    """
     global _UniversalProjectReader, _RelationType, _TimeUnit, _TaskField
 
-    from net.sf.mpxj.reader import UniversalProjectReader  # type: ignore[import]
-    from net.sf.mpxj import RelationType, TimeUnit  # type: ignore[import]
+    from org.mpxj.reader import UniversalProjectReader  # type: ignore[import]
+    from org.mpxj import RelationType, TimeUnit  # type: ignore[import]
 
     _UniversalProjectReader = UniversalProjectReader
     _RelationType = RelationType
