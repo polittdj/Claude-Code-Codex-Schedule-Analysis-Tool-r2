@@ -34,16 +34,24 @@ def start_jvm() -> bool:
         return JVM_AVAILABLE
 
     try:
+        import glob
         import jpype
         import jpype.imports
+        import mpxj as _mpxj_pkg
 
         if not jpype.isJVMStarted():
+            # Collect all MPXJ JARs — they live in mpxj.mpxj_dir
+            jar_files = glob.glob(os.path.join(_mpxj_pkg.mpxj_dir, "*.jar"))
+            if not jar_files:
+                raise RuntimeError(
+                    f"No MPXJ JARs found in {_mpxj_pkg.mpxj_dir}. "
+                    "Re-run: pip install mpxj"
+                )
+
             # Locate JVM — prefer explicit JAVA_HOME so portable JDK works
             jvm_path = None
             java_home = os.environ.get("JAVA_HOME", "")
             if java_home:
-                # Windows: jvm.dll lives at <JAVA_HOME>\bin\server\jvm.dll
-                # Linux/Mac: <JAVA_HOME>/lib/server/libjvm.so
                 for candidate in [
                     os.path.join(java_home, "bin", "server", "jvm.dll"),
                     os.path.join(java_home, "lib", "server", "libjvm.so"),
@@ -53,11 +61,17 @@ def start_jvm() -> bool:
                         jvm_path = candidate
                         break
 
+            logger.info(
+                "Starting JVM: path=%s, jars=%d, JAVA_HOME=%s",
+                jvm_path or "auto",
+                len(jar_files),
+                java_home or "not set",
+            )
+
             if jvm_path:
-                jpype.startJVM(jvm_path, convertStrings=False)
+                jpype.startJVM(jvm_path, classpath=jar_files, convertStrings=False)
             else:
-                # Fall back to JPype's auto-detection
-                jpype.startJVM(convertStrings=False)
+                jpype.startJVM(classpath=jar_files, convertStrings=False)
 
         _load_mpxj_classes()
         JVM_AVAILABLE = True
