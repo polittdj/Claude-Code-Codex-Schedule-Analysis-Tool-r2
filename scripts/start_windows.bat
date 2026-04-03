@@ -58,7 +58,7 @@ python --version
 REM ── Install Python dependencies ───────────────────────────────────────────────
 echo.
 echo Installing Python dependencies (first run takes a minute)...
-pip install -r "%~dp0backend\requirements.txt" --quiet
+pip install -r "%~dp0..\backend\requirements.txt" --quiet
 if %errorlevel% neq 0 (
     echo ERROR: pip install failed. See error above.
     pause
@@ -79,7 +79,7 @@ echo   Close it to shut down.
 echo ==========================================
 echo.
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 pause
